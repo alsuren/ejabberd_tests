@@ -20,24 +20,24 @@ tests_to_run() ->
      {logdir, ?CT_REPORT},
 
      {suite, [adhoc_SUITE,
-              anonymous_SUITE,
-              last_SUITE,
-              login_SUITE,
-              muc_SUITE,
-              offline_SUITE,
-              presence_SUITE,
-              privacy_SUITE,
-              private_SUITE,
-              s2s_SUITE,
-              sic_SUITE,
+              %anonymous_SUITE,
+              %last_SUITE,
+              %login_SUITE,
+	      %muc_SUITE]}
+              %offline_SUITE,
+	      presence_SUITE]}
+              %privacy_SUITE,
+              %private_SUITE,
+              %s2s_SUITE,
+              %sic_SUITE,
               %snmp_SUITE,
               %snmp_c2s_SUITE,
               %snmp_register_SUITE,
               %snmp_roster_SUITE,
               %snmp_session_SUITE,
               %snmp_table_SUITE,
-              vcard_SUITE,
-              websockets_SUITE]}
+              %vcard_SUITE,
+              %websockets_SUITE]}
     ].
 
 tests_to_run(none) ->
