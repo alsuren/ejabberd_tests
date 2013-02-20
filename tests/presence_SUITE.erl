@@ -19,6 +19,7 @@
 
 -include_lib("escalus/include/escalus.hrl").
 -include_lib("common_test/include/ct.hrl").
+-include_lib("exml/include/exml.hrl").
 
 %%--------------------------------------------------------------------
 %% Suite configuration
@@ -26,6 +27,7 @@
 
 all() ->
     [{group, presence},
+     {group, google_queue},
      {group, roster},
      {group, subscribe_group}].
 
@@ -33,6 +35,8 @@ groups() ->
     [{presence, [sequence], [available,
                              available_direct,
                              additions]},
+     {google_queue, [sequence], [queued_available_direct,
+                                 queued_additions]},
      {roster, [sequence], [get_roster,
                            add_contact,
                            remove_contact]},
@@ -107,6 +111,50 @@ available_direct(Config) ->
         end).
 
 additions(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        Tags = escalus_stanza:tags([
+            {<<"show">>, <<"dnd">>},
+            {<<"priority">>, <<"1">>},
+            {<<"status">>, <<"Short break">>}
+        ]),
+        Presence = escalus_stanza:presence_direct(bob, <<"available">>, Tags),
+        escalus:send(Alice, Presence),
+
+        Received = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_presence, Received),
+        escalus:assert(is_presence_with_show, [<<"dnd">>], Received),
+        escalus:assert(is_presence_with_status, [<<"Short break">>], Received),
+        escalus:assert(is_presence_with_priority, [<<"1">>], Received)
+
+        end).
+
+-define(NS_GOOGLE_QUEUE, <<"google:queue">>).
+
+queued_available_direct(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq_set(?NS_GOOGLE_QUEUE, #xmlelement{name = <<"enable">>})),
+        QueueResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, QueueResult),
+
+        escalus:send(Alice, escalus_stanza:presence_direct(bob, <<"available">>)),
+        % assert presence stanza doesn't get through yet.
+        Silence = escalus:wait_for_stanzas(Bob, 1, 500),
+        Silence = [],
+
+        escalus:send(Bob, escalus_stanza:iq_set(?NS_GOOGLE_QUEUE, #xmlelement{name = <<"flush">>})),
+
+        Received = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_presence, Received),
+        escalus_assert:is_stanza_from(Alice, Received),
+
+        FlushResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, FlushResult)
+
+        end).
+
+queued_additions(Config) ->
     escalus:story(Config, [1, 1], fun(Alice,Bob) ->
 
         Tags = escalus_stanza:tags([
