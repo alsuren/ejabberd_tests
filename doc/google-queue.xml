@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE xep SYSTEM 'xep.dtd' [
+  <!ENTITY % ents SYSTEM 'xep.ent'>
+%ents;
+]>
+<?xml-stylesheet type='text/xsl' href='xep.xsl'?>
+<xep>
+<header>
+  <title>Presence Queueing</title>
+  <abstract>This specification describes a simple mechanism to provide increased battery life in exchange for increasing the latency of presence.</abstract>
+  &LEGALNOTICE;
+  <number>XXXX</number>
+  <status>ProtoXEP</status>
+  <type>Historical</type>
+  <sig>Standards</sig>
+  <approver>Council</approver>
+  <dependencies>
+    <spec>XMPP Core</spec>
+  </dependencies>
+  <supersedes/>
+  <supersededby/>
+  <shortname>Queueing</shortname>
+  <author>
+    <firstname>Dave</firstname>
+    <surname>Cridland</surname>
+    <email>dave.cridland@isode.com</email>
+    <jid>dave.cridland@isode.com</jid>
+  </author>
+  <author>
+    <firstname>Jonas</firstname>
+    <surname>Lindberg</surname>
+    <email>jonasl@google.com</email>
+    <jid>jonasl@google.com</jid>
+  </author>
+  <revision>
+    <version>0.0.1</version>
+    <date>2011-02-21</date>
+    <initials>dwd</initials>
+    <remark><p>First draft.</p></remark>
+  </revision>
+</header>
+<section1 topic='Introduction' anchor='intro'>
+  <p>Although &xep0273; provides a mechanism for reducing and controlling network traffic, an alternate protocol has been deployed on large sites for a number of years.</p>
+  <p>This specification describes a queueing protocol which is straightforward to implement on both client and server, based on the notion that late delivery of many stanzas is entirely acceptable in many cases, particularly for presence.</p>
+  <p>As such, there is just a simple boolean switch, and presence-related stanzas are simply delayed, pending other activity on the stream. The effect of this is to extend the quiescent periods between network activity such that the mobile radio can drop through power levels more often within a session. Since radio timeouts can be many seconds, it's advantageous to maintain radio silence for as long as possible.</p>
+</section1>
+
+<section1 topic='Use Cases' anchor='usecases'>
+  <p>It is intended that a mobile handset might switch on bunching when the roster view is not uppermost, or when the device itself is in idle mode (ie, backlight off, etc).</p>
+  <p>A mobile application not tightly dependent on presence might leave bunching enabled throughout the session.</p>
+</section1>
+<section1 topic='Business Rules' anchor='rules'>
+ <section2 topic="Protocol">
+  <p>A server offering presence queueing normally advertises a disco feature of "google:queue". Note that some current implementations do not advertise any feature; implementations are advised to test for the feature if there is a "google:roster" feature advertised.</p>
+  <p>To enable or disable queueing, a client sends the server an &IQ; element with type set, containing a &lt;query/&gt; element qualified by the namespace "google:queue". The child elements of the query are used to specify the required action:</p>
+  <p>If queueing is desired, a client includes a &lt;enable/&gt; element. To disable it, a &lt;disable/&gt; element is included instead. To flush the queue, sending all pending stanzas - particularly advisable if the feature is being disabled - a &lt;flush/&gt; element is included.</p>
+ </section2>
+ <section2 topic='Examples'>
+  <p>Turning the protocol on is done by just an &lt;enable/> on its own.</p>
+  <example caption='Turning the presence queueing on'><![CDATA[
+<iq type='set' id='a0001'>
+ <query xmlns='google:queue'>
+  <enable/>
+ </query>
+</iq>
+]]></example>
+  <p>Sometime later, a client may wish to flush the queue, perhaps in order to refresh the roster display.</p>
+  <example caption='Flushing the queue'><![CDATA[
+<iq type='set' id='a0002'>
+ <query xmlns='google:queue'>
+  <flush/>
+ </query>
+</iq>
+]]></example>
+  <p>Finally, a client disables queueing when engaging in a period of high interactivity. Note that it is highly advisable to explicitly request that the queue be flushed at this time.</p>
+  <example caption='Disabling queueing'><![CDATA[
+<iq type='set' id='a0003'>
+ <query xmlns='google:queue'>
+  <disable/>
+  <flush/>
+ </query>
+</iq>
+]]></example>
+ </section2>
+ <section2 topic="Behaviour when enabled">
+  <p>When a server has a stanza to send the client, if the stanza is a &lt;presence/> stanza with either no type, or a type of "unavailable", the server does not transmit the stanza, but instead retains it in a buffer for later transmission. When another stanza is to be transmitted, this buffer is flushed along with the new stanza - note that servers SHOULD retain the ordering, and MUST ensure that XMPP Core ordering requirements are met.</p>
+  <p>A server MAY choose other stanzas which are typically associated with presence - in particular PEP publish &lt;message/>, but implementors are encouraged to exercise caution over such behaviour.</p>
+  <p>Servers MAY choose to elide presence stanzas which have been overtaken by events, and MAY unilaterally flush the session.</p>
+ </section2>
+</section1>
+<section1 topic='Implementation Notes' anchor='impl'>
+  <p>In most cases, this should be a matter of simply not flushing the normal outbound buffer on the server in some circumstances.</p>
+  <p>For clients, the behaviour of the specification is largely transparent, and stanza processing can be decoupled from control of bunching.</p>
+  <p>In experimental emulations of typical sessions, this behaviour increased the quiescent time between activity on the XMPP session, and while many of the more intelligence behaviours possible were not easily achievable, it did suggest that a significant improvement in battery life on a mobile device could be achieved.</p>
+  <p>Compression was not affected, although bandwidth does decrease due to a reduced overhead from TCP and TLS framing.</p>
+</section1>
+<section1 topic='Security Considerations' anchor='security'>
+  <p>There are no security issues with this specification known. In particular, all stanzas remain delivered and unchanged, so integrity and authentication of stanzas will remain functional.</p>
+</section1>
+<section1 topic='IANA Considerations' anchor='iana'>
+  <p>None.</p>
+</section1>
+<section1 topic='XMPP Registrar Considerations' anchor='registrar'>
+  <p>Need to register the "google:queue" legacy  namespace and disco feature.</p>
+</section1>
+<section1 topic='XML Schema' anchor='schema'>
+  <p>REQUIRED for protocol specifications - TBD.</p>
+</section1>
+</xep>
