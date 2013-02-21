@@ -81,7 +81,7 @@ end_per_testcase(CaseName, Config) ->
     escalus:end_per_testcase(CaseName, Config).
 
 end_rosters_remove(Config) ->
-    [{_, UserSpec1}, {_, UserSpec2} | _] =
+    [{_, _UserSpec1}, {_, _UserSpec2} | _] =
         escalus_config:get_config(escalus_users, Config),
     escalus:delete_users(Config),
     escalus:create_users(Config),
