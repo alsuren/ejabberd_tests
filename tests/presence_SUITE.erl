@@ -20,6 +20,7 @@
 -include_lib("escalus/include/escalus.hrl").
 -include_lib("common_test/include/ct.hrl").
 -include_lib("exml/include/exml.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 %%--------------------------------------------------------------------
 %% Suite configuration
@@ -27,7 +28,8 @@
 
 all() ->
     [{group, presence},
-     {group, google_queue},
+     %{group, google_queue},
+     {group, fb_suspend},
      {group, roster},
      {group, subscribe_group}].
 
@@ -37,6 +39,8 @@ groups() ->
                              additions]},
      {google_queue, [sequence], [queued_available_direct,
                                  queued_additions]},
+     {fb_suspend, [sequence], [suspended_available_direct,
+                                 suspended_additions]},
      {roster, [sequence], [get_roster,
                            add_contact,
                            remove_contact]},
@@ -172,6 +176,68 @@ queued_additions(Config) ->
         escalus:assert(is_presence_with_priority, [<<"1">>], Received)
 
         end).
+
+-define(NS_FB_SUSPEND, <<"http://www.facebook.com/xmpp/suspend">>).
+
+suspended_available_direct(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        escalus:send(Alice, escalus_stanza:presence_direct(bob, <<"available">>)),
+        % assert presence stanza doesn't get through yet.
+        Silence = escalus:wait_for_stanzas(Bob, 1, 500),
+        ?assertEqual([], Silence),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+
+        Received = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_presence, Received),
+        escalus_assert:is_stanza_from(Alice, Received),
+
+        WakeResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, WakeResult)
+
+        end).
+
+suspended_additions(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        Tags = escalus_stanza:tags([
+            {<<"show">>, <<"dnd">>},
+            {<<"priority">>, <<"1">>},
+            {<<"status">>, <<"Short break">>}
+        ]),
+        Presence = escalus_stanza:presence_direct(bob, <<"available">>, Tags),
+        escalus:send(Alice, Presence),
+
+        % assert presence stanza doesn't get through yet.
+        Silence = escalus:wait_for_stanzas(Bob, 1, 500),
+        ?assertEqual([], Silence),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"flush">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+
+        Received = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_presence, Received),
+        escalus:assert(is_presence_with_show, [<<"dnd">>], Received),
+        escalus:assert(is_presence_with_status, [<<"Short break">>], Received),
+        escalus:assert(is_presence_with_priority, [<<"1">>], Received),
+
+        FlushResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, FlushResult)
+
+        end).
+
 
 get_roster(Config) ->
     escalus:story(Config, [1, 1], fun(Alice,_Bob) ->
