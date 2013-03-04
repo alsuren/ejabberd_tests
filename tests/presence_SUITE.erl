@@ -38,6 +38,7 @@ groups() ->
                              available_vcard,
                              additions]},
      {fb_suspend, [sequence], [suspended_available_direct,
+                               suspended_timeout,
                                suspended_additions,
                                suspended_load_test]},
      {roster, [sequence], [get_roster,
@@ -178,6 +179,46 @@ suspended_available_direct(Config) ->
 
         WakeResult = escalus:wait_for_stanza(Bob),
         escalus:assert(is_iq_result, WakeResult)
+
+        end).
+
+suspended_timeout(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND},
+                        {<<"pause">>, <<"600">>}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        escalus:send(Alice, escalus_stanza:presence_direct(bob, <<"available">>)),
+        % assert presence stanza doesn't get through yet.
+        Silence = escalus:wait_for_stanzas(Bob, 1, 500),
+        ?assertEqual([], Silence),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+
+        Received = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_presence, Received),
+        escalus_assert:is_stanza_from(Alice, Received),
+
+        WakeResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, WakeResult),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND},
+                        {<<"pause">>, <<"1">>}]})),
+        SleepResult2 = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult2),
+
+        timer:sleep(2000),
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+
+        WakeResult2 = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, WakeResult2)
+
 
         end).
 
