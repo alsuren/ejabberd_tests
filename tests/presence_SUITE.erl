@@ -40,7 +40,8 @@ groups() ->
      {google_queue, [sequence], [queued_available_direct,
                                  queued_additions]},
      {fb_suspend, [sequence], [suspended_available_direct,
-                                 suspended_additions]},
+                               suspended_additions,
+                               suspended_load_test]},
      {roster, [sequence], [get_roster,
                            add_contact,
                            remove_contact]},
@@ -238,6 +239,45 @@ suspended_additions(Config) ->
 
         end).
 
+sleep_and_wake(Bob) ->
+    escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+            #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+    SleepResult = escalus:wait_for_stanza(Bob),
+    escalus:assert(is_iq_result, SleepResult),
+
+    escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+            #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+
+    WakeResult = escalus:wait_for_stanza(Bob),
+    escalus:assert(is_iq_result, WakeResult).
+
+
+suspended_load_test(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        [sleep_and_wake(Bob) || _X <- lists:seq(0, 100, 1)],
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        escalus:send(Alice, escalus_stanza:presence_direct(bob, <<"available">>)),
+        % assert presence stanza doesn't get through yet.
+        Silence = escalus:wait_for_stanzas(Bob, 1, 500),
+        ?assertEqual([], Silence),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+
+        Received = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_presence, Received),
+        escalus_assert:is_stanza_from(Alice, Received),
+
+        WakeResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, WakeResult)
+
+        end).
 
 get_roster(Config) ->
     escalus:story(Config, [1, 1], fun(Alice,_Bob) ->
