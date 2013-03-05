@@ -32,6 +32,7 @@ all() ->
 groups() ->
     [{presence, [sequence], [available,
                              available_direct,
+                             available_vcard,
                              additions]},
      {roster, [sequence], [get_roster,
                            add_contact,
@@ -122,6 +123,27 @@ additions(Config) ->
         escalus:assert(is_presence_with_show, [<<"dnd">>], Received),
         escalus:assert(is_presence_with_status, [<<"Short break">>], Received),
         escalus:assert(is_presence_with_priority, [<<"1">>], Received)
+
+        end).
+
+available_vcard(Config) ->
+    escalus:story(Config, [1], fun(Alice) ->
+        PhotoHash = <<"d692a91d73345998b234275bffd953a1d1c7ad45">>,
+        PhotoElement = #xmlelement{ name = <<"photo">>, children = [exml:escape_cdata(PhotoHash)]},
+
+        Tags = [#xmlelement{ name = <<"priority">>, children = [exml:escape_cdata(<<"70">>)]},
+                #xmlelement{ name = <<"x">>, attrs = [{<<"xmlns">>, <<"vcard-temp:x:update">>}],
+                    children = [PhotoElement]
+                } %% and also caps, but we will ignore them for now.
+        ],
+        Presence = escalus_stanza:presence(<<"available">>, Tags),
+        ?assertEqual([PhotoElement], exml_query:paths(Presence, [{element, <<"x">>}, {element, <<"photo">>}])),
+
+        escalus:send(Alice, Presence),
+        HairpinnedPresence = escalus:wait_for_stanza(Alice),
+
+        escalus:assert(is_presence, HairpinnedPresence),
+        ?assertEqual([PhotoElement], exml_query:paths(HairpinnedPresence, [{element, <<"x">>}, {element, <<"photo">>}]))
 
         end).
 
