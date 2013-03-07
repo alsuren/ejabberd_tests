@@ -216,9 +216,8 @@ suspended_timeout(Config) ->
         escalus:send(Bob, escalus_stanza:iq(<<"set">>,
                 #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
 
-        WakeResult2 = escalus:wait_for_stanza(Bob),
-        escalus:assert(is_iq_result, WakeResult2)
-
+        NotAnIQBecauseWeTimedOut = escalus:wait_for_stanzas(Bob, 1, 500),
+        ?assertEqual([], NotAnIQBecauseWeTimedOut)
 
         end).
 
