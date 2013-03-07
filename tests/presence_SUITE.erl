@@ -39,6 +39,7 @@ groups() ->
                              additions]},
      {fb_suspend, [sequence], [suspended_available_direct,
                                suspended_timeout,
+                               suspended_timeout_immediate,
                                suspended_additions,
                                suspended_load_test]},
      {roster, [sequence], [get_roster,
@@ -220,6 +221,30 @@ suspended_timeout(Config) ->
         ?assertEqual([], NotAnIQBecauseWeTimedOut)
 
         end).
+
+suspended_timeout_immediate(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND},
+                        {<<"pause">>, <<"0">>}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        escalus:send(Alice, escalus_stanza:presence_direct(bob, <<"available">>)),
+        % assert presence stanza doesn't get through.
+        Silence = escalus:wait_for_stanzas(Bob, 1, 500),
+        ?assertEqual([], Silence),
+
+        timer:sleep(2000),
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+
+        NotAnIQBecauseWeTimedOut = escalus:wait_for_stanzas(Bob, 1, 500),
+        ?assertEqual([], NotAnIQBecauseWeTimedOut)
+
+        end).
+
 
 suspended_additions(Config) ->
     escalus:story(Config, [1, 1], fun(Alice,Bob) ->
