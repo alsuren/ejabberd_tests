@@ -21,6 +21,12 @@ debug_test: prepare
 			`pwd`/deps/*/ebin \
 		-s run_common_test ct_debug
 
+
+%_SUITE: prepare
+	ct_run -pa `pwd`/deps/*/ebin \
+		-config test.config \
+		-suite tests/$@
+
 cover_test: prepare
 	erl -noinput -sname test -setcookie ejabberd \
 		-pa `pwd`/tests \
