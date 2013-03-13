@@ -15,6 +15,12 @@ test: prepare
 			`pwd`/deps/*/ebin \
 		-s run_common_test ct
 
+trace_network: prepare
+	erl -sname test -setcookie ejabberd \
+		-pa `pwd`/tests \
+			`pwd`/deps/*/ebin \
+		-s run_common_test ct_trace escalus_connection
+
 debug_test: prepare
 	erl -sname test -setcookie ejabberd \
 		-pa `pwd`/tests \

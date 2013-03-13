@@ -1,5 +1,5 @@
 -module(run_common_test).
--export([ct/0, ct_debug/0, ct_cover/0, cover_summary/0]).
+-export([ct/0, ct_trace/1, ct_debug/0, ct_cover/0, cover_summary/0]).
 
 -define(CT_DIR, filename:join([".", "tests"])).
 -define(CT_REPORT, filename:join([".", "ct_report"])).
@@ -54,6 +54,21 @@ ct() ->
             ok
     end,
     init:stop(0).
+
+ct_trace([Module]) ->
+    dbg:start(),
+    dbg:tracer(),
+    dbg:tp(Module, '_', [{'_', [], [{return_trace}]}]),
+    dbg:p(all, c),
+    Result = ct:run_test(tests_to_run()),
+    case Result of
+        {error, Reason} ->
+            throw({ct_error, Reason});
+        _ ->
+            ok
+    end,
+    init:stop(0).
+
 
 ct_debug() ->
     dbg:start(),
