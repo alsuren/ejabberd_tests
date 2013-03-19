@@ -41,6 +41,7 @@ groups() ->
                                suspended_timeout,
                                suspended_timeout_immediate,
                                suspended_additions,
+                               suspended_fifo,
                                suspended_load_test]},
      {roster, [sequence], [get_roster,
                            add_contact,
@@ -242,6 +243,46 @@ suspended_timeout_immediate(Config) ->
 
         NotAnIQBecauseWeTimedOut = escalus:wait_for_stanzas(Bob, 1, 500),
         ?assertEqual([], NotAnIQBecauseWeTimedOut)
+
+        end).
+
+suspended_fifo(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        Tags = escalus_stanza:tags([
+            {<<"show">>, <<"dnd">>},
+            {<<"priority">>, <<"1">>},
+            {<<"status">>, <<"Short break">>}
+        ]),
+        Presence = escalus_stanza:presence_direct(bob, <<"available">>, Tags),
+        escalus:send(Alice, Presence),
+
+        Presence2 = escalus_stanza:presence_direct(bob, <<"available">>),
+        escalus:send(Alice, Presence2),
+
+        % assert presence stanza doesn't get through yet.
+        Silence = escalus:wait_for_stanzas(Bob, 1, 500),
+        ?assertEqual([], Silence),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"flush">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+
+        Received = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_presence, Received),
+        escalus:assert(is_presence_with_show, [<<"dnd">>], Received),
+        escalus:assert(is_presence_with_status, [<<"Short break">>], Received),
+        escalus:assert(is_presence_with_priority, [<<"1">>], Received),
+
+        Received2 = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_presence, Received2),
+
+        FlushResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, FlushResult)
 
         end).
 
