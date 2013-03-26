@@ -31,7 +31,11 @@ debug_test: prepare
 %_SUITE: prepare
 	ct_run -pa `pwd`/deps/*/ebin \
 		-config test.config \
-		-suite tests/$@
+		-logdir ct_report/ \
+		-suite tests/$@ \
+		-case $(cases) \
+		-group $(groups)
+
 
 cover_test: prepare
 	erl -noinput -sname test -setcookie ejabberd \
