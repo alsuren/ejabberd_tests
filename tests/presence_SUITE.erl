@@ -38,6 +38,8 @@ groups() ->
                              available_vcard,
                              additions]},
      {fb_suspend, [sequence], [suspended_available_direct,
+                               suspended_available_direct_then_timeout_immediate,
+                               suspended_available_direct_then_disconnect_before_timeout,
                                suspended_timeout,
                                suspended_timeout_immediate,
                                suspended_additions,
@@ -183,6 +185,71 @@ suspended_available_direct(Config) ->
         escalus:assert(is_iq_result, WakeResult)
 
         end).
+
+suspended_available_direct_then_timeout_immediate(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        escalus:send(Alice, escalus_stanza:presence_direct(bob, <<"available">>)),
+        % assert presence stanza doesn't get through yet.
+        Silence = escalus:wait_for_stanzas(Bob, 1, 500),
+        ?assertEqual([], Silence),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+
+        Received = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_presence, Received),
+        escalus_assert:is_stanza_from(Alice, Received),
+
+        WakeResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, WakeResult),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND},
+                        {<<"pause">>, <<"0">>}]})),
+        SleepResult2 = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult2),
+
+        timer:sleep(500)
+
+        end).
+
+suspended_available_direct_then_disconnect_before_timeout(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        escalus:send(Alice, escalus_stanza:presence_direct(bob, <<"available">>)),
+        % assert presence stanza doesn't get through yet.
+        Silence = escalus:wait_for_stanzas(Bob, 1, 500),
+        ?assertEqual([], Silence),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+
+        Received = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_presence, Received),
+        escalus_assert:is_stanza_from(Alice, Received),
+
+        WakeResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, WakeResult),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND},
+                        {<<"pause">>, <<"600">>}]})),
+        SleepResult2 = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult2)
+
+        end).
+
 
 suspended_timeout(Config) ->
     escalus:story(Config, [1, 1], fun(Alice,Bob) ->
