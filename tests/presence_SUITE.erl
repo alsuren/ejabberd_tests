@@ -282,11 +282,10 @@ suspended_timeout(Config) ->
         escalus:assert(is_iq_result, SleepResult2),
 
         timer:sleep(2000),
-        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
-                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        Exception = (catch escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                    #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]}))),
 
-        NotAnIQBecauseWeTimedOut = escalus:wait_for_stanzas(Bob, 1, 500),
-        ?assertEqual([], NotAnIQBecauseWeTimedOut)
+        ?assertEqual({badmatch, {error, closed}}, element(1, element(2, Exception)))
 
         end).
 
@@ -305,11 +304,10 @@ suspended_timeout_immediate(Config) ->
         ?assertEqual([], Silence),
 
         timer:sleep(2000),
-        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
-                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        Exception = (catch escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                    #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]}))),
 
-        NotAnIQBecauseWeTimedOut = escalus:wait_for_stanzas(Bob, 1, 500),
-        ?assertEqual([], NotAnIQBecauseWeTimedOut)
+        ?assertEqual({badmatch, {error, closed}}, element(1, element(2, Exception)))
 
         end).
 
