@@ -42,6 +42,9 @@ groups() ->
                                suspended_available_direct_then_disconnect_before_timeout,
                                suspended_timeout,
                                suspended_timeout_immediate,
+                               suspended_sleep_wake,
+                               suspended_sleep_flush_wake,
+                               suspended_sleep_flush_flush_wake,
                                suspended_additions,
                                suspended_fifo,
                                suspended_load_test]},
@@ -348,6 +351,67 @@ suspended_fifo(Config) ->
 
         FlushResult = escalus:wait_for_stanza(Bob),
         escalus:assert(is_iq_result, FlushResult)
+
+        end).
+
+
+suspended_sleep_wake(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        WakeResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, WakeResult)
+
+        end).
+
+suspended_sleep_flush_wake(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"flush">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        FlushResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, FlushResult),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        WakeResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, WakeResult)
+
+        end).
+
+suspended_sleep_flush_flush_wake(Config) ->
+    escalus:story(Config, [1, 1], fun(Alice,Bob) ->
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"sleep">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        SleepResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, SleepResult),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"flush">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        FlushResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, FlushResult),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"flush">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        FlushResult2 = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, FlushResult2),
+
+        escalus:send(Bob, escalus_stanza:iq(<<"set">>,
+                #xmlelement{name = <<"wake">>, attrs = [{<<"xmlns">>, ?NS_FB_SUSPEND}]})),
+        WakeResult = escalus:wait_for_stanza(Bob),
+        escalus:assert(is_iq_result, WakeResult)
 
         end).
 
