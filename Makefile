@@ -15,6 +15,12 @@ test: prepare
 			`pwd`/deps/*/ebin \
 		-s run_common_test ct
 
+debug_test: prepare
+	erl -sname test -setcookie ejabberd \
+		-pa `pwd`/tests \
+			`pwd`/deps/*/ebin \
+		-s run_common_test ct_debug
+
 cover_test: prepare
 	erl -noinput -sname test -setcookie ejabberd \
 		-pa `pwd`/tests \
@@ -32,7 +38,7 @@ prepare: compile
 		 run_common_test.erl
 	mkdir -p ct_report
 
-console: compile
+console: prepare
 	erl -sname test -setcookie ejabberd \
 		-pa `pwd`/tests \
 			`pwd`/deps/*/ebin \
